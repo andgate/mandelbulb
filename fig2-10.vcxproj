@@ -261,20 +261,22 @@ copy "$(SolutionDir)\mandelbulb.frag" "$(OutDir)"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="FirstPerson.cpp" />
+    <ClCompile Include="CameraController.cpp" />
     <ClCompile Include="MandelbulbViewer.cpp" />
     <ClCompile Include="Engine.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Matrix4.cpp" />
+    <ClCompile Include="Quaternion.cpp" />
     <ClCompile Include="Vector3f.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="FirstPerson.h" />
+    <ClInclude Include="CameraController.h" />
     <ClInclude Include="InputListener.h" />
     <ClInclude Include="MandelbulbViewer.h" />
     <ClInclude Include="Engine.h" />
     <ClInclude Include="Matrix4.h" />
+    <ClInclude Include="Quaternion.h" />
     <ClInclude Include="Vector3f.h" />
   </ItemGroup>
   <ItemGroup>

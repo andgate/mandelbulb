@@ -13,6 +13,7 @@ using namespace std;
 
 Engine::Engine(int width, int height, const string& title)
 	: deltaTime(1.0f / 60.0f) // assume initial dt is at 60fps
+	, mouseX(0) , mouseY(0)
 	, clock()
 	, listeners(new vector<InputListener*>())
 	, heldKeys(new unordered_set<sf::Keyboard::Key>())
@@ -53,50 +54,54 @@ int Engine::run()
 
 	clock.restart();
 
+	centerMouse();
+
 	while (window->isOpen())
     {
+		preupdate();
+
 		sf::Event event;
 		while (window->pollEvent(event))
 		{
-            if (event.type == sf::Event::Closed)
-            {
-                if (event.type == sf::Event::Closed)
-                window->close();
-			}
-
-			if (event.type == sf::Event::KeyPressed)
+			switch (event.type)
 			{
+			case sf::Event::Closed:
+                window->close();
+				break;
+
+			case sf::Event::KeyPressed:
 				if (event.key.code == sf::Keyboard::Escape) window->close();
 				notifyKeyPressed(event.key.code, deltaTime);
 				heldKeys->insert(event.key.code);
-			}
+				break;
 
-			if (event.type == sf::Event::KeyReleased)
-			{
+			case sf::Event::KeyReleased:
 				notifyKeyReleased(event.key.code, deltaTime);
 				heldKeys->erase(event.key.code);
-			}
+				break;
 
-			if (event.type == sf::Event::MouseMoved)
-			{
+			case sf::Event::MouseMoved:
 				notifyMouseMoved(event.mouseMove, deltaTime);
-			}
+				break;
 
-			if (event.type == sf::Event::MouseButtonPressed)
-			{
+			case sf::Event::MouseButtonPressed:
 				notifyMousePressed(event.mouseButton, deltaTime);
-			}
+				break;
 
-			if (event.type == sf::Event::MouseButtonReleased)
-			{
+			case sf::Event::MouseButtonReleased:
 				notifyMouseReleased(event.mouseButton, deltaTime);
-			}
+				break;
 
-			if (event.type == sf::Event::MouseWheelScrolled)
-			{
+			case sf::Event::MouseWheelScrolled:
 				notifyMouseScrolled(event.mouseWheelScroll, deltaTime);
+				break;
+
+			default:
+				break;
 			}
         }
+
+		centerMouse();
 
 		if (!heldKeys->empty())
 		{
@@ -133,6 +138,11 @@ sf::Clock& Engine::getClock()
 void Engine::setInitFunc(std::function<void(void)> f)
 {
 	this->init = f;
+}
+
+void Engine::setPreupdateFunc(std::function<void(void)> f)
+{
+	this->preupdate = f;
 }
 
 void Engine::setUpdateFunc(std::function<void(const float)> f)
@@ -183,12 +193,21 @@ void Engine::notifyKeyHeld(const sf::Keyboard::Key &key, const float dt) const
 	}
 }
 
-void Engine::notifyMouseMoved(const sf::Event::MouseMoveEvent &ev, const float dt) const
+void Engine::notifyMouseMoved(const sf::Event::MouseMoveEvent &ev, const float dt)
 {
+	sf::Vector2i halfscreen = sf::Vector2i(window->getSize());
+	halfscreen /= 2;
+
+	int dx = ev.x - mouseX;
+	int dy = ev.y - mouseY;
+
 	for (auto& l : *listeners)
 	{
-		l->mouseMoved(ev.x, ev.y, dt);
+		l->mouseMoved(ev.x, ev.y, dx, dy, dt);
 	}
+
+	mouseX = ev.x;
+	mouseY = ev.y;
 }
 
 void Engine::notifyMousePressed(const sf::Event::MouseButtonEvent &ev, const float dt) const
@@ -215,6 +234,29 @@ void Engine::notifyMouseScrolled(const sf::Event::MouseWheelScrollEvent &ev, con
 	}
 }
 
+void Engine::centerMouse()
+{
+	mouseX = window->getSize().x/2;
+	mouseY = window->getSize().y/2;
+	sf::Mouse::setPosition(sf::Vector2i(mouseX, mouseY), *window);
+}
+
+void Engine::wrapMouse()
+{
+	sf::Vector2i mousePos = sf::Mouse::getPosition(*window);
+	sf::Vector2i screen = sf::Vector2i(window->getSize());
+
+	if (mousePos.x <= 1)
+		mousePos.x = screen.x-1;
+
+	if (mousePos.x >= screen.x-1)
+		mousePos.x = 1;
+
+	sf::Mouse::setPosition(mousePos, *window);
+
+	mouseX = mousePos.x;
+	mouseY = mousePos.y;
+}
 
 /** OpenGL Helpers **/
 
@@ -228,7 +270,6 @@ void Engine::initGL()
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
 
-	glEnable(GL_SMOOTH);
 
 	// Setup a perspective projection
 	glMatrixMode(GL_PROJECTION);

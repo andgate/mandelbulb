@@ -1,23 +1,39 @@
 #ifndef MATRIX_4_H
 #define MATRIX_4_H
 
-#include "Vector3f.h"
+class Vector3f;
+class Quaternion;
 
 class Matrix4
 {
 public:
 	Matrix4();
+	Matrix4(const Matrix4 &other);
+	Matrix4(Matrix4 &&other);
 
-	const float* getMatrix() const;
+	Matrix4& set(const Matrix4& other);
+	const float* asArray() const;
 
 	Matrix4& identity();
+
+	Matrix4& set (const Quaternion &quat);
+	Matrix4& set (const float &quaternionX, const float &quaternionY, const float &quaternionZ, const float &quaternionW);
+	Matrix4& set ( const float &translationX, const float &translationY, const float &translationZ
+		         , const float &quaternionX, const float &quaternionY, const float &quaternionZ, const float &quaternionW);
+
 	Matrix4& setToProjection(float near, float far, float fovy, float aspectRatio);
 	
 	Matrix4& setToTranslation (const Vector3f &v);
 	Matrix4& setToTranslation (float x, float y, float z);
 
+	Matrix4& setToRotation (const float &axisX, const float &axisY, const float &axisZ, const float &degrees);
+    Matrix4& setToRotation (const Vector3f &axis, const float &degrees);
+
+
 	Matrix4& setToLookAt (Vector3f direction, Vector3f up);
 	Matrix4& setToLookAt (Vector3f position, Vector3f target, Vector3f up);
+
+	Matrix4& inv();
 
 	Matrix4& add(const Matrix4 &other);
 	Matrix4& mul(const Matrix4 &other);
@@ -28,6 +44,7 @@ public:
 private:
 	float val[16];
 
+public:
 	static const int M00 = 0;
 	static const int M01 = 4;
 	static const int M02 = 8;

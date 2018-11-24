@@ -1,15 +1,17 @@
-#ifndef FIRST_PERSON_h
-#define FIRST_PERSON_H
+#ifndef CAMERA_CONTROLLER_H
+#define CAMERA_CONTROLLER_H
 
 #include "Camera.h"
 #include "InputListener.h"
+#include "Vector3f.h"
 
-class FirstPerson : public InputListener
+class CameraController : public InputListener
 {
 public:
-	FirstPerson();
+	Camera *camera;
 
-	Camera* getCamera() const;
+	CameraController(float viewportWidth, float viewportHeight);
+
 	const float* getCameraMatrix() const;
 
 	void update(const float dt);
@@ -19,15 +21,15 @@ public:
 	void keyReleased(const sf::Keyboard::Key &key, const float dt);
 
 	
-	void mouseMoved(const int mouseX, const int mouseY, const float dt);
+	void mouseMoved(const int mouseX, const int mouseY, const int dx, const int dy, const float dt);
 	void mousePressed(const sf::Mouse::Button &btn, const int mouseX, const int mouseY, const float dt);
 	void mouseReleased(const sf::Mouse::Button &btn, const int mouseX, const int mouseY, const float dt);
 	void mouseScrolled(const float delta, const int mouseX, const int mouseY, const float dt);
 
 private:
-	Camera *camera;
-	float velocity;
+	float degreesPerPixel;
+	float scalePerScroll;
 };
 
 
-#endif /* FIRST_PERSON_H */
+#endif /* CAMERA_CONTROLLER_H */

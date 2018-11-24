@@ -2,7 +2,7 @@
 #define MANDELBULB_VIEWER_H
 
 #include "Engine.h"
-#include "FirstPerson.h"
+#include "CameraController.h"
 #include <SFML/Graphics/Shader.hpp>
 
 class MandelbulbViewer
@@ -15,11 +15,12 @@ public:
 
 private:
 	Engine *engine;
-	FirstPerson *firstPerson;
+	CameraController *cam;
 	sf::Shader *shader;
 	sf::RectangleShape *quad;
 
 	void init();
+	void preupdate();
 	void update(const float dt);
 	void draw();
 };

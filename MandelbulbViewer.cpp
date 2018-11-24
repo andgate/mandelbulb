@@ -5,7 +5,7 @@
 
 MandelbulbViewer::MandelbulbViewer(int windowWidth, int windowHeight)
 	: engine(nullptr)
-	, firstPerson(new FirstPerson())
+	, cam(new CameraController((float)windowWidth, (float)windowHeight))
 	, shader(new sf::Shader())
 	, quad(nullptr)
 {
@@ -15,13 +15,14 @@ MandelbulbViewer::MandelbulbViewer(int windowWidth, int windowHeight)
 MandelbulbViewer::~MandelbulbViewer()
 {
 	if(engine != nullptr) delete engine;
-	if(firstPerson != nullptr) delete firstPerson;
+	if(cam != nullptr) delete cam;
 	if(shader != nullptr) delete shader;
 }
 
 int MandelbulbViewer::run()
 {
 	engine->setInitFunc(std::bind(&MandelbulbViewer::init, this));
+	engine->setPreupdateFunc(std::bind(&MandelbulbViewer::preupdate, this));
 	engine->setUpdateFunc(std::bind(&MandelbulbViewer::update, this, std::placeholders::_1));
 	engine->setDrawFunc(std::bind(&MandelbulbViewer::draw, this));
 
@@ -53,26 +54,37 @@ void MandelbulbViewer::init()
 	shader->setUniform("screen_height", screenHeight);
 	sf::Shader::bind(NULL);
 
-	engine->registerInputListener(firstPerson);
+	engine->registerInputListener(cam);
+}
+
+void MandelbulbViewer::preupdate()
+{
+
 }
 
 void MandelbulbViewer::update(const float dt)
 {
 	// this is when the camera needs to be passed to the shader
 	sf::Shader::bind(shader);
-	
-	const float* camera_combined = firstPerson->getCamera()->getMatrix();
-	shader->setUniform("camera_combined", (sf::Glsl::Mat4)camera_combined);
 
-	sf::Vector3f camera_position = firstPerson->getCamera()->position.asSFML();
+	sf::Vector3f camera_position = cam->camera->position.asSFML();
 	shader->setUniform("camera_position", (sf::Glsl::Vec3)camera_position);
 
-	sf::Vector3f camera_direction = firstPerson->getCamera()->direction.asSFML();
+	sf::Vector3f camera_direction = cam->camera->direction.asSFML();
 	shader->setUniform("camera_direction", (sf::Glsl::Vec3)camera_direction);
 
-	sf::Vector3f camera_up = firstPerson->getCamera()->up.asSFML();
+	sf::Vector3f camera_up = cam->camera->up.asSFML();
 	shader->setUniform("camera_up", (sf::Glsl::Vec3)camera_up);
 
+	float screenWidth = (float)engine->getWindow()->getSize().x;
+	float screenHeight = (float)engine->getWindow()->getSize().y;
+	shader->setUniform("aspect", screenWidth/screenHeight);
+	
+	float fov = cam->camera->fov();
+	shader->setUniform("fov", fov);
+
+	float zoom = cam->camera->zoom;
+	shader->setUniform("zoom", zoom);
 
 	sf::Shader::bind(NULL);
 }

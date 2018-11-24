@@ -5,6 +5,7 @@ using namespace std;
 
 int main (int argc, char** argv)
 {
-	MandelbulbViewer viewer(500, 500);
+	MandelbulbViewer viewer(800, 600);
+	//MandelbulbViewer viewer(1024, 768);
 	return viewer.run();
 }

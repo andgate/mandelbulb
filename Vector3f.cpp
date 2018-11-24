@@ -3,44 +3,39 @@
 #include <cstring>
 #include <cmath>
 
+#include "Matrix4.h"
 
 Vector3f::Vector3f()
-{
-	val[X] = 0.0f;
-	val[Y] = 0.0f;
-	val[Z] = 0.0f;
-}
+	: x(0.0f), y(0.0f), z(0.0f)
+{}
 
 
 Vector3f::Vector3f(float x, float y, float z)
-{
-	val[X] = x;
-	val[Y] = y;
-	val[Z] = z;
-}
+	: x(x), y(y), z(z)
+{}
 
 Vector3f::Vector3f(const Vector3f &other)
-{
-	memcpy(val, other.val, 3*sizeof(float));
-}
+	: x(other.x), y(other.y), z(other.z)
+{}
 
 Vector3f::Vector3f(Vector3f &&other)
-{
-	memcpy(val, other.val, 3);
-	// zeroing isn't necessary for the move
-	//memset(other.val, 0, 3);
-}
+	: x(other.x), y(other.y), z(other.z)
+{}
 
 
 Vector3f& Vector3f::operator=(const Vector3f &b)
 {
-	memcpy(val, b.val, 3);
+	this->x = b.x;
+	this->y = b.y;
+	this->z = b.z;
 	return *this;
 }
 
 Vector3f& Vector3f::operator=(Vector3f &&b)
 {
-	memcpy(val, b.val, 3);
+	this->x = b.x;
+	this->y = b.y;
+	this->z = b.z;
 	return *this;
 }
 
@@ -48,48 +43,27 @@ Vector3f& Vector3f::operator=(Vector3f &&b)
 
 sf::Vector3f Vector3f::asSFML() const
 {
-	return sf::Vector3f(val[X], val[Y], val[Z]);
+	return sf::Vector3f(x, y, z);
 }
 
 
-float* Vector3f::getValues()
+Vector3f& Vector3f::set(const float &x, const float &y, const float &z)
 {
-	return val;
+	this->x = x;
+	this->y = y;
+	this->z = z;
+	return *this;
 }
 
-float Vector3f::getX() const
+Vector3f& Vector3f::set(const Vector3f &u)
 {
-	return val[X];
+	return this->set(u.x, u.y, u.z);
 }
 
-float Vector3f::getY() const
-{
-	return val[Y];
-}
-
-float Vector3f::getZ() const
-{
-	return val[Z];
-}
-
-float& Vector3f::x() 
-{
-	return val[X];
-}
-
-float& Vector3f::y()
-{
-	return val[Y];
-}
-
-float& Vector3f::z()
-{
-	return val[Z];
-}
 
 float Vector3f::length() const
 {
-	return sqrt((val[X] * val[X]) + (val[Y] * val[Y]) + (val[Z] * val[Z]));
+	return sqrt((x * x) + (y * y) + (z * z));
 }
 
 
@@ -104,6 +78,14 @@ Vector3f& Vector3f::add(const Vector3f &b)
 }
 
 
+Vector3f& Vector3f::mul(const Matrix4& m)
+{
+	const float* l_mat = m.asArray();
+	return this->set( x * l_mat[Matrix4::M00] + y * l_mat[Matrix4::M01] + z * l_mat[Matrix4::M02] + l_mat[Matrix4::M03]
+	                , x * l_mat[Matrix4::M10] + y * l_mat[Matrix4::M11] + z * l_mat[Matrix4::M12] + l_mat[Matrix4::M13]
+				    , x * l_mat[Matrix4::M20] + y * l_mat[Matrix4::M21] + z * l_mat[Matrix4::M22] + l_mat[Matrix4::M23]);
+}
+
 
 Vector3f& Vector3f::normalize()
 {
@@ -115,61 +97,76 @@ Vector3f Vector3f::normalize(const Vector3f &v)
 	return Vector3f(v) /= v.length();
 }
 
-float Vector3f::dot(const Vector3f &b) const
+float Vector3f::dot(const Vector3f &u) const
 {
-	const float *v = val;
-	const float *u = b.val;
-	return v[X] * u[X] + v[Y] * u[Y] + v[Z] * u[Z];
+	return x * u.x + y * u.y + z * u.z;
 }
 
-Vector3f& Vector3f::cross(const Vector3f &b)
+Vector3f& Vector3f::cross(const Vector3f &u)
 {
-	Vector3f tmp = Vector3f(*this);
-	const float *v = tmp.val;
-	const float *u = b.val;
+	Vector3f tmp(*this);
+	tmp.x = y * u.z - z * u.y;
+	tmp.y = z * u.x - x * u.z;
+	tmp.z = x * u.y - y * u.x;
 
-	val[X] = v[Y] * u[Z] - v[Z] * u[Y];
-	val[Y] = v[Z] * u[X] - v[X] * u[Z];
-	val[Z] = v[X] * u[Y] - v[Y] * u[X];
-
-	return *this;
+	return this->set(tmp);
 }
 
 Vector3f Vector3f::cross(const Vector3f &a, const Vector3f &b)
 {
-	const float *v = a.val;
-	const float *u = b.val;
-	return Vector3f( v[Y] * u[Z] - v[Z] * u[Y]
-		           , v[X] * u[Z] - v[Z] * u[X]
-				   , v[X] * u[Y] - v[Y] * u[X]
+	return Vector3f( a.y * b.z - a.z * b.y
+		           , a.z * b.x - a.x * b.z
+				   , a.x * b.y - a.y * b.x
 		           );
 }
 
+Vector3f& Vector3f::rot(const Matrix4& matrix)
+{
+	const float* l_mat = matrix.asArray();
+	this->set( x * l_mat[Matrix4::M00] + y * l_mat[Matrix4::M01] + z * l_mat[Matrix4::M02]
+	         , x * l_mat[Matrix4::M10] + y * l_mat[Matrix4::M11] + z * l_mat[Matrix4::M12]
+			 , x * l_mat[Matrix4::M20] + y * l_mat[Matrix4::M21] + z * l_mat[Matrix4::M22]);
+
+	return *this;
+}
+
+
+Vector3f& Vector3f::rotate(const float &degrees, const float &axisX, const float &axisY, const float &axisZ)
+{
+	Matrix4 tmpMat;
+	tmpMat.setToRotation(axisX, axisY, axisZ, degrees);
+	return this->mul(tmpMat);
+}
+
+Vector3f& Vector3f::rotate(const Vector3f& axis, const float &degrees)
+{
+	Matrix4 tmpMat;
+	tmpMat.setToRotation(axis, degrees);
+	return this->mul(tmpMat);
+}
 
 Vector3f Vector3f::operator+(const Vector3f &u) const
 {
-	const float *uVal = u.val;
-	return Vector3f( val[X] + uVal[X]
-				   , val[Y] + uVal[Y]
-				   , val[Z] + uVal[Z]
+	return Vector3f( x + u.x
+				   , y + u.y
+				   , z + u.z
 	               );
 }
 
 
 Vector3f Vector3f::operator-(const Vector3f &u) const
 {
-	const float *uVal = u.val;
-	return Vector3f( val[X] - uVal[X]
-				   , val[Y] - uVal[Y]
-				   , val[Z] - uVal[Z]
+	return Vector3f( x - u.x
+				   , y - u.y
+				   , z - u.z
 	               );
 }
 
 Vector3f Vector3f::operator*(const float &s) const
 {
-	return Vector3f( val[X] * s
-				   , val[Y] * s
-				   , val[Z] * s
+	return Vector3f( x * s
+				   , y * s
+				   , z * s
 	               );
 }
 
@@ -177,41 +174,37 @@ Vector3f Vector3f::operator/(const float &s) const
 {
 	if (s != 0.0f)
 	{
-		return Vector3f( val[X] / s
-					   , val[Y] / s
-					   , val[Z] / s
+		return Vector3f( x / s
+					   , y / s
+				       , z / s
 					   );
 	}
 
+	return *this;
 }
 
 Vector3f& Vector3f::operator+=(const Vector3f &u)
 {
-	const float *uVal = u.val;
-	val[X] += uVal[X];
-	val[Y] += uVal[Y];
-	val[Z] += uVal[Z];
-
+	x += u.x;
+	y += u.y;
+	z += u.z;
 	return *this;
 }
 
 
 Vector3f& Vector3f::operator-=(const Vector3f &u)
 {
-	const float *uVal = u.val;
-	val[X] -= uVal[X];
-	val[Y] -= uVal[Y];
-	val[Z] -= uVal[Z];
-
+	x -= u.x;
+	y -= u.y;
+	z -= u.z;
 	return *this;
 }
 
 Vector3f& Vector3f::operator*=(const float &s)
 {
-	val[X] *= s;
-	val[Y] *= s;
-	val[Z] *= s;
-
+	x *= s;
+	y *= s;
+	z *= s;
 	return *this;
 }
 
@@ -219,9 +212,9 @@ Vector3f& Vector3f::operator/=(const float &s)
 {
 	if (s != 0.0f)
 	{
-		val[X] /= s;
-		val[Y] /= s;
-		val[Z] /= s;
+		x /= s;
+		y /= s;
+		z /= s;
 	}
 
 	return *this;

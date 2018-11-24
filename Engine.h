@@ -27,6 +27,7 @@ public:
 	sf::Clock& getClock();
 
 	void setInitFunc  (std::function<void(void)> f);
+	void setPreupdateFunc(std::function<void(void)> f);
 	void setUpdateFunc(std::function<void(const float)> f);
 	void setDrawFunc  (std::function<void(void)> f);
 
@@ -34,6 +35,7 @@ public:
 
 private:
 	float deltaTime;
+	int mouseX, mouseY;
 
 	sf::RenderWindow *window;
 	sf::Clock clock;
@@ -42,6 +44,7 @@ private:
 	std::unordered_set<sf::Keyboard::Key> *heldKeys;
 
 	std::function<void(void)> init;
+	std::function<void(void)> preupdate;
 	std::function<void(const float)> update;
 	std::function<void(void)> draw;
 
@@ -52,10 +55,13 @@ private:
 	void notifyKeyReleased(const sf::Keyboard::Key &key, const float dt) const;
 	void notifyKeyHeld(const sf::Keyboard::Key &key, const float dt) const;
 
-	void notifyMouseMoved(const sf::Event::MouseMoveEvent &ev, const float dt) const;
+	void notifyMouseMoved(const sf::Event::MouseMoveEvent &ev, const float dt);
 	void notifyMousePressed(const sf::Event::MouseButtonEvent &ev, const float dt) const;
 	void notifyMouseReleased(const sf::Event::MouseButtonEvent &ev, const float dt) const;
 	void notifyMouseScrolled(const sf::Event::MouseWheelScrollEvent &ev, const float dt) const;
+
+	void centerMouse();
+	void wrapMouse();
 
 	/** OpenGL Helpers **/
 	void initGL();

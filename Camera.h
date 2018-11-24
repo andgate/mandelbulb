@@ -4,33 +4,36 @@
 #include "Matrix4.h"
 #include "Vector3f.h"
 
+const float default_fov = 67.0f;
+const float sphere_unit_distance = 2.0f;
+const float sphere_pad_fov_unit_distance = 3.5f;
+
 class Camera
 {
 public:
-	Camera();
+	Camera(float viewportWidth, float viewportHeight);
 
-	void update();
+	Camera& setSphereRadius(const float &sphereRadius);
+	Camera& scaleSphereRadius(const float &scaleFactor);
 
-	const float* getMatrix() const;
+
+	void rotate(const float &angle, const float &axisX, const float &axisY, const float &axisZ);
+	void rotate(const Vector3f &axis, const float &angle);
+
+	float aspect() const;
+	float fov() const;
+	float estimateMandelbulbDistance() const;
+
 
 	// Update must be called after changing these fields
 	Vector3f direction;
 	Vector3f position;
 	Vector3f up;
-
-private:
-	float fieldOfView;
-
-	Matrix4 projection;
-	Matrix4 view;
-	Matrix4 combined;
-	Matrix4 invProjectionView;
-
-	float near;
-	float far;
-
+	
 	float viewportWidth;
 	float viewportHeight;
+
+	float zoom;
 };
 
 
