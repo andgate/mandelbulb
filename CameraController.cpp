@@ -13,6 +13,7 @@ using namespace std;
 
 CameraController::CameraController(float viewportWidth, float viewportHeight)
 	: camera(new Camera(viewportWidth, viewportHeight))
+	, speed_up(1.0f)
 {}
 
 void CameraController::update(const float dt)
@@ -20,7 +21,7 @@ void CameraController::update(const float dt)
 
 void CameraController::keyHeld(const sf::Keyboard::Key &key, const float dt)
 {
-	float velocity = CAM_UNIT_SPEED * camera->scale(1.0f);
+	float velocity = CAM_UNIT_SPEED * log(camera->scale() + 1.0f) * speed_up;
 	float offset = velocity * dt;
 
 	switch (key)
@@ -93,7 +94,17 @@ void CameraController::mouseMoved(const int mouseX, const int mouseY, const int 
 
 // Unused functions
 void CameraController::mouseScrolled(const float scrollDelta, const int mouseX, const int mouseY, const float timeDelta) {}
-void CameraController::keyPressed(const sf::Keyboard::Key &key, const float dt) {}
-void CameraController::keyReleased(const sf::Keyboard::Key &key, const float dt) {}
+void CameraController::keyPressed(const sf::Keyboard::Key &key, const float dt)
+{
+	if( key == sf::Keyboard::Space )
+		speed_up = CAM_SPEED_UP; 
+}
+
+void CameraController::keyReleased(const sf::Keyboard::Key &key, const float dt)
+{
+	if( key == sf::Keyboard::Space )
+		speed_up = 1.0f; 
+}
+
 void CameraController::mouseReleased(const sf::Mouse::Button &btn, const int mouseX, const int mouseY, const float dt) {}
 void CameraController::mousePressed(const sf::Mouse::Button &btn, const int mouseX, const int mouseY, const float dt) {}

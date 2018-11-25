@@ -3,6 +3,7 @@
 
 const float CAM_UNIT_SPEED = 1.0f;
 const float CAM_DEGREES_PER_PIXEL = 0.2f;
+const float CAM_SPEED_UP = 5.0f;
 
 const float FOV = 67.0f;
 const int SCREEN_WIDTH = 640;

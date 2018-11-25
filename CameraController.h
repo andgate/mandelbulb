@@ -25,6 +25,9 @@ public:
 	void mousePressed(const sf::Mouse::Button &btn, const int mouseX, const int mouseY, const float dt);
 	void mouseReleased(const sf::Mouse::Button &btn, const int mouseX, const int mouseY, const float dt);
 	void mouseScrolled(const float delta, const int mouseX, const int mouseY, const float dt);
+
+private:
+	float speed_up;
 };
 
 
