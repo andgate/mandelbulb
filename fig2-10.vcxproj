@@ -272,6 +272,7 @@ copy "$(SolutionDir)\mandelbulb.frag" "$(OutDir)"</Command>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CameraController.h" />
+    <ClInclude Include="Constants.h" />
     <ClInclude Include="InputListener.h" />
     <ClInclude Include="MandelbulbViewer.h" />
     <ClInclude Include="Engine.h" />

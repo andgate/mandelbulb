@@ -2,10 +2,10 @@
 using namespace std;
 
 #include "MandelbulbViewer.h"
+#include "Constants.h"
 
 int main (int argc, char** argv)
 {
-	MandelbulbViewer viewer(800, 600);
-	//MandelbulbViewer viewer(1024, 768);
+	MandelbulbViewer viewer(SCREEN_WIDTH, SCREEN_HEIGHT);
 	return viewer.run();
 }

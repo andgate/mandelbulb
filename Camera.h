@@ -4,10 +4,6 @@
 #include "Matrix4.h"
 #include "Vector3f.h"
 
-const float default_fov = 67.0f;
-const float sphere_unit_distance = 2.0f;
-const float sphere_pad_fov_unit_distance = 3.5f;
-
 class Camera
 {
 public:
@@ -32,8 +28,7 @@ public:
 	
 	float viewportWidth;
 	float viewportHeight;
-
-	float zoom;
+	float scale(const float &unit = 1.0f) const;
 };
 
 

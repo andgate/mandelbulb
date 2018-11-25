@@ -1,27 +1,29 @@
 #version 330
 
 #define M_PI 3.1415926535897932384626433832795
+#define FLT_MIN 1.175494351e-38
 
 uniform vec3 camera_position;
 uniform vec3 camera_direction;
 uniform vec3 camera_up;
 
-uniform vec3 sphere_center;
-uniform float sphere_radius;
-
+uniform float scale;
 uniform float aspect;
 uniform float fov;
-uniform float zoom;
 
 uniform float screen_width;
 uniform float screen_height;
 
+uniform float epsilon_factor;
+uniform float max_dist;
+uniform float max_bailout;
+uniform int max_iter;
+uniform int max_steps;
+
+
+
 in vec3 Color;
 out vec4 o_color;
-
-float Bailout = 4.0;
-int Iterations = 4;
-
 
 vec3 hsv2rgb(vec3 c)
 {
@@ -30,14 +32,25 @@ vec3 hsv2rgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-float sdfMandelbulb(vec3 p, out vec4 pixelColor)
+vec3 rgb2hsv(vec3 c)
+{
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+float sdfMandelbulb(vec3 p, out vec4 pixelColor, in float mdist)
 {
 	vec3 q = p;
 	float m = dot(q,q);
 	float dr = 1.0;
 	vec4 trap = vec4(abs(q), m);
 
-	for (int i = 0; i < Iterations; ++i)
+	for (int i = 0; i < max_iter; ++i)
 	{
 		float m2 = m*m;
 		float m4 = m2*m2;
@@ -59,87 +72,160 @@ float sdfMandelbulb(vec3 p, out vec4 pixelColor)
 		trap = min( trap, vec4(abs(q),m) );
 
         m = dot(q,q);
-		if( m > 256.0 )
+		if( m > max_bailout )
             break;
 	}
 
-	pixelColor = normalize(vec4(hsv2rgb(vec3(m, 0.8, 0.8)), 1.0f) + trap.xyzw);
+	//pixelColor = vec4(hsv2rgb(vec3(vec4(m, trap.yzw), 0.8, 0.8)), 1.0f;
+	pixelColor = vec4(m, trap.yzw);
 	return 0.25*log(m)*sqrt(m)/dr;
 }
 
-float map(in vec3 p, out vec4 pixelColor)
+float map(in vec3 p, out vec4 pixelColor, in float mdist)
 {
-	float bulb_distance = sdfMandelbulb(p, pixelColor);
+	float bulb_distance = sdfMandelbulb(p, pixelColor, mdist);
     return bulb_distance;
 }
 
-vec3 calculate_normal(in vec3 p, in float t, in float px)
+vec3 calculate_normal(in vec3 p, in float t, const float mdist)
 {
-	vec4 tmp;
-    const vec3 e = vec2(1.0, -1.0)*0.5773*0.25*px;
-    return normalize( e.xyy*map(p + e.xyy, tmp) +
-	                  e.yyx*map(p + e.xyy, tmp) +
-					  e.yxy*map(p + e.yxy, tmp) +
-				      e.xxx*map(p + e.xxx, tmp) );
+    vec4 tmp;
+    vec2 e = vec2(1.0, -1.0) * epsilon_factor * scale;
+    return normalize( e.xyy*map(p + e.xyy, tmp, mdist) +
+	                  e.yyx*map(p + e.xyy, tmp, mdist) +
+					  e.yxy*map(p + e.yxy, tmp, mdist) +
+				      e.xxx*map(p + e.xxx, tmp, mdist) );
+}
+
+
+vec3 applyFog( in vec3  rgb,       // original color of the pixel
+               in float distance ) // camera to point distance
+{
+	float b = 1.0;
+    float fogAmount = 1.0 - exp( -distance*b );
+    vec3  fogColor  = vec3(0.5,0.6,0.7);
+    return mix( rgb, fogColor, fogAmount );
+}
+
+vec3 applyFogWithSun( in vec3  rgb,      // original color of the pixel
+					  in float distance, // camera to point distance
+					  in vec3  rayDir,   // camera to point vector
+					  in vec3  sunDir )  // sun light direction
+{
+	float b = 1.0;
+    float fogAmount = 1.0 - exp( -distance*b );
+    float sunAmount = max( dot( rayDir, sunDir ), 0.0 );
+    vec3  fogColor  = mix( vec3(0.5,0.6,0.7), // bluish
+                           vec3(1.0,0.9,0.7), // yellowish
+                           pow(sunAmount,8.0) );
+    return mix( rgb, fogColor, fogAmount );
+}
+
+
+vec3 applyFogNonConstant( in vec3  rgb,      // original color of the pixel
+						  in float distance, // camera to point distance
+						  in vec3  rayOri,   // camera position
+						  in vec3  rayDir,
+						  in vec3  sunDir  )  // camera to point vector
+{
+	float b = 1.0;
+	float c = 1.0;
+    float fogAmount = c * exp(-rayOri.y*b) * (1.0-exp( -distance*rayDir.y*b ))/rayDir.y;
+	float sunAmount = max( dot( rayDir, sunDir ), 0.0 );
+    vec3  fogColor  = mix( vec3(0.5,0.6,0.7), // bluish
+                           vec3(1.0,0.9,0.7), // yellowish
+                           pow(sunAmount, 8.0) );
+    return mix( rgb, fogColor, fogAmount );
+}
+
+vec2 intersect_sphere(in vec4 sph, in vec3 ro, in vec3 rd)
+{
+    vec3 oc = ro - sph.xyz;
+    
+	float b = dot(oc,rd);
+	float c = dot(oc,oc) - sph.w*sph.w;
+    float h = b*b - c;
+    
+    if (h < 0.0) return vec2(-1.0);
+
+    h = sqrt(h);
+
+    return -b + vec2(-h,h);
+}
+
+float cast_ray(in vec3 ro, in vec3 rd, in float steps, out vec4 color, out int steps_taken)
+{
+    float res = -1.0;
+
+	// bounding sphere
+	vec2 dis = intersect_sphere (vec4(0.0,0.0,0.0,1.25), ro, rd);
+	
+	if (dis.y < 0.0) return -1.0;
+	dis.x = max (dis.x, 0.0);
+	dis.y = min (dis.y, 10.0);
+
+	float eps = epsilon_factor * scale;
+
+	// raymarch fractal distance field
+	vec4 trap;
+	float t = dis.x;
+	for (int i = 0; i < steps; ++i) { 
+		vec3 pos = ro + rd*t;
+		float h = map( pos, trap, t );
+		
+		if ( t>dis.y || h<eps ) { steps_taken = i; break; }
+		t += h;
+	}
+    
+	if (t < dis.y) {
+		color = trap;
+		res = t;
+	}
+
+	return res;
 }
 
 
 const vec3 light1 = vec3(  0.577, 0.577, -0.577 );
 const vec3 light2 = vec3( -0.707, 0.000,  0.707 );
 
-vec4 lighting(in vec4 color)
-{
-	vec3 normal = calculate_normal(current_position);
-	vec3 light_position = vec3(2.0, -5.0, 3.0);
-	vec3 direction_to_light = normalize(current_position - light_position);
-
-	float diffuse_intensity = max(0.0, dot(normal, direction_to_light));
-
-	float specular = pow(diffuse_intensity, 64.0);
-
-	return pixelColor.xyz * (diffuse_intensity + specular);
-}
-
-vec3 cast_ray(in vec3 ro, in vec3 rd, vec4 color, float px)
-
 vec3 ray_march(in vec3 ro, in vec3 rd)
 {
 	vec4 pixelColor;
-	float camera_distance = abs(map(ro, pixelColor));
-	float shrink = sqrt(camera_distance)/zoom;
+	float mdist = abs(map(ro, pixelColor, 1.0));
 
-    float total_distance_traveled = 0.0;
-    int NUMBER_OF_STEPS = int(200.0/shrink);
-    float MINIMUM_HIT_DISTANCE = 0.001 * shrink;     // these should be computed
-    float MAXIMUM_TRACE_DISTANCE = 5.0;              // from zoom or
+	vec4 tra;
+	int steps_taken;
 
-	cast_ray
+	float t = cast_ray(ro, rd, max_steps, tra, steps_taken);
 
-    for (int i = 0; i < NUMBER_OF_STEPS; ++i)
-    {
-        vec3 current_position = ro + total_distance_traveled * rd;
+	vec3 col;
+	if (t < 0.0) {
+		/* Color sky */
+     	col  = vec3(0.7,0.7,0.7);
+	} else {
+	    // Color Fractal
+		col = hsv2rgb(vec3(length(tra.yzw), .8, .8));
+		//col = tra.xyz;
 
-        float distance_to_closest = abs(map(current_position, pixelColor));
-        if (distance_to_closest < MINIMUM_HIT_DISTANCE) 
-        {
-            vec3 normal = calculate_normal(current_position);
-            vec3 light_position = vec3(2.0, -5.0, 3.0);
-            vec3 direction_to_light = normalize(current_position - light_position);
+		// Calculate Lighting
+		vec3 pos = ro + t*rd;
+        vec3 nor = calculate_normal( pos, t, mdist );
+		vec3 lightDir = -rd;
 
-            float diffuse_intensity = max(0.0, dot(normal, direction_to_light));
+		vec3 lightColor = vec3(1.0, 1.0, 1.0);
 
-			float specular = pow(diffuse_intensity, 64.0);
+		float ambientStrength = 0.1;
+		vec3 ambient = ambientStrength * lightColor;
 
-            return pixelColor.xyz * (diffuse_intensity + specular);
-        }
+		//float sha1 = soft_shadow( pos+0.001*nor, light1, 32.0 );
+		float diff = max(dot(nor, lightDir), 0.0);
+		vec3 diffuse = diff * lightColor;
 
-        if (total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
-        {
-            return vec3(0.7);
-        }
-        total_distance_traveled += distance_to_closest;
-    }
-    return vec3(0.7);
+		col *= (ambient + diffuse);
+	}
+
+	return applyFogNonConstant(col, t, ro, rd, light1);
 }
 
 
@@ -155,6 +241,5 @@ void main()
 	vec3 rd = normalize(camera_right * px + camera_up * py + camera_direction);
 
     vec3 shaded_color = ray_march(ro.xyz, rd.xyz);
-
     o_color = vec4(shaded_color, 1.0);
 }

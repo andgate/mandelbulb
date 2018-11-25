@@ -1,5 +1,7 @@
 #include "MandelbulbViewer.h"
 
+#include "Constants.h"
+
 #include <iostream>
 #include <cstdlib>
 
@@ -76,15 +78,27 @@ void MandelbulbViewer::update(const float dt)
 	sf::Vector3f camera_up = cam->camera->up.asSFML();
 	shader->setUniform("camera_up", (sf::Glsl::Vec3)camera_up);
 
+	float scale = cam->camera->scale();
+	shader->setUniform("scale", scale);
+
 	float screenWidth = (float)engine->getWindow()->getSize().x;
 	float screenHeight = (float)engine->getWindow()->getSize().y;
 	shader->setUniform("aspect", screenWidth/screenHeight);
+	shader->setUniform("fov", FOV);
 	
-	float fov = cam->camera->fov();
-	shader->setUniform("fov", fov);
+	shader->setUniform("screen_width", screenWidth);
+	shader->setUniform("screen_height", screenHeight);
+	
+	shader->setUniform("epsilon_factor", EPSILON_FACTOR);
+	shader->setUniform("max_dist", 5.0f);
+	shader->setUniform("max_bailout", MAX_BAILOUT);
+	shader->setUniform("max_iter", MAX_ITER);
+	shader->setUniform("max_steps", MAX_STEPS);
 
-	float zoom = cam->camera->zoom;
-	shader->setUniform("zoom", zoom);
+	
+
+//	float zoom = cam->camera->zoom;
+//	shader->setUniform("zoom", zoom);
 
 	sf::Shader::bind(NULL);
 }

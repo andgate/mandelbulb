@@ -9,11 +9,10 @@
 using namespace std;
 
 #include "Vector3f.h"
+#include "Constants.h"
 
 CameraController::CameraController(float viewportWidth, float viewportHeight)
 	: camera(new Camera(viewportWidth, viewportHeight))
-	, degreesPerPixel(0.2f)
-	, scalePerScroll(1.01f)
 {}
 
 void CameraController::update(const float dt)
@@ -21,14 +20,7 @@ void CameraController::update(const float dt)
 
 void CameraController::keyHeld(const sf::Keyboard::Key &key, const float dt)
 {
-	float bulb_dist = camera->estimateMandelbulbDistance();
-	 
-	float velocity;
-	if (bulb_dist > 0)
-		velocity = 1.0f * sqrt(bulb_dist) / camera->zoom;
-	else
-		velocity = 1.0f / camera->zoom;
-	
+	float velocity = CAM_UNIT_SPEED * camera->scale(1.0f);
 	float offset = velocity * dt;
 
 	switch (key)
@@ -86,9 +78,8 @@ const float clamp(const float &n, const float &lower, const float &upper) {
 
 void CameraController::mouseMoved(const int mouseX, const int mouseY, const int dx, const int dy, const float dt)
 {
-	float max_distance = camera->estimateMandelbulbDistance();
-	float deltaX = (float)dx * degreesPerPixel / camera->zoom;
-	float deltaY = (float)dy * degreesPerPixel / camera->zoom;
+	float deltaX = (float)dx * CAM_DEGREES_PER_PIXEL;
+	float deltaY = (float)dy * CAM_DEGREES_PER_PIXEL;
 
 	camera->direction.rotate(camera->up, deltaX);
 
@@ -99,21 +90,9 @@ void CameraController::mouseMoved(const int mouseX, const int mouseY, const int 
 	camera->up.rotate(right, deltaY);
 }
 
-void CameraController::mouseScrolled(const float scrollDelta, const int mouseX, const int mouseY, const float timeDelta)
-{
-	float scale = scalePerScroll * min(2.0f, abs(scrollDelta));
-	
-	if (scrollDelta > 0)
-        camera->zoom *= scale;
-	else if (scrollDelta < 0)
-		camera->zoom /= scale;
-
-	camera->zoom = max(camera->zoom, 1.0f);
-
-	cout << "zoom = " << camera->zoom << endl;
-}
 
 // Unused functions
+void CameraController::mouseScrolled(const float scrollDelta, const int mouseX, const int mouseY, const float timeDelta) {}
 void CameraController::keyPressed(const sf::Keyboard::Key &key, const float dt) {}
 void CameraController::keyReleased(const sf::Keyboard::Key &key, const float dt) {}
 void CameraController::mouseReleased(const sf::Mouse::Button &btn, const int mouseX, const int mouseY, const float dt) {}

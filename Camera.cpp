@@ -12,7 +12,6 @@ Camera::Camera(float viewportWidth, float viewportHeight)
   , up(0.0f, 1.0f, 0.0f)
   , viewportWidth(viewportWidth)
   , viewportHeight(viewportHeight)
-  , zoom(1.0f)
 {}
 
 void Camera::rotate(const float &angle, const float &axisX, const float &axisY, const float &axisZ)
@@ -30,11 +29,6 @@ void Camera::rotate(const Vector3f &axis, const float &angle)
 float Camera::aspect() const
 {
 	return viewportWidth / viewportHeight;
-}
-
-float Camera::fov() const
-{
-	return default_fov / zoom;
 }
 
 float inversesqrt(float n)
@@ -86,7 +80,16 @@ float sdfMandelbulb(const Vector3f &p)
 	return 0.25f*log(m)*sqrt(m)/dr;
 }
 
+
 float Camera::estimateMandelbulbDistance() const
 {
 	return sdfMandelbulb(position);
+}
+
+
+float Camera::scale(const float &unit) const
+{
+	float mdist = estimateMandelbulbDistance();
+	if (abs(mdist) >= unit) return unit;
+	else return abs(mdist / unit);
 }
