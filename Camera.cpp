@@ -113,7 +113,7 @@ float sdfMandelbulb(const Vector3f &p, const int &power)
 
 float Camera::estimateMandelbulbDistance() const
 {
-	return sdfMandelbulb_fast(position);
+	return sdfMandelbulb(position, POWER);
 }
 
 

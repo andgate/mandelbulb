@@ -24,6 +24,8 @@ uniform int power;
 
 float DIVERGENCE = 2.0f;
 
+vec3 SKY_COLOR = vec3(1.0,1.0,1.0);
+
 in vec3 Color;
 out vec4 o_color;
 
@@ -120,14 +122,14 @@ float sdfMandelbulb_fast(vec3 p, out vec4 pixelColor)
 
 float map(in vec3 p, out vec4 pixelColor)
 {
-	float bulb_distance = sdfMandelbulb_fast(p, pixelColor);
+	float bulb_distance = sdfMandelbulb(p, power, pixelColor);
     return bulb_distance;
 }
 
 vec3 calculate_normal(in vec3 p, in float mdist)
 {
     vec4 tmp;
-    float e = max(1e-7, 2.0f*epsilon_factor * scale);
+    float e = max(1e-32, 5.0f*epsilon_factor * scale);
 	return normalize(vec3(
         map(vec3(p.x + e, p.y, p.z), tmp) - map(vec3(p.x - e, p.y, p.z), tmp),
         map(vec3(p.x, p.y + e, p.z), tmp) - map(vec3(p.x, p.y - e, p.z), tmp),
@@ -138,7 +140,7 @@ vec3 calculate_normal(in vec3 p, in float mdist)
 vec3 calculate_normal_fast(in vec3 p, in float mdist)
 {
     vec4 tmp;
-    vec2 e = vec2(1.0, -1.0) * epsilon_factor * scale;
+    vec2 e = vec2(1.0, -1.0) * max(1e-32, 5.0f*epsilon_factor * scale);;
     return normalize( e.xyy*map(p + e.xyy, tmp) +
 	                  e.yyx*map(p + e.xyy, tmp) +
 					  e.yxy*map(p + e.yxy, tmp) +
@@ -149,42 +151,11 @@ vec3 calculate_normal_fast(in vec3 p, in float mdist)
 vec3 applyFog( in vec3  rgb,       // original color of the pixel
                in float distance ) // camera to point distance
 {
-	float b = 1.0;
-    float fogAmount = 1.0 - exp( -distance*b );
-    vec3  fogColor  = vec3(0.5,0.6,0.7);
-    return mix( rgb, fogColor, fogAmount );
+	float foglimit = max(1e-7, 1.0 * max_dist * scale);
+	float fogAmount = min(1.0, distance / foglimit);
+    return mix( rgb, SKY_COLOR, fogAmount );
 }
 
-vec3 applyFogWithSun( in vec3  rgb,      // original color of the pixel
-					  in float distance, // camera to point distance
-					  in vec3  rayDir,   // camera to point vector
-					  in vec3  sunDir )  // sun light direction
-{
-	float b = 1.0;
-    float fogAmount = 1.0 - exp( -distance*b );
-    float sunAmount = max( dot( rayDir, sunDir ), 0.0 );
-    vec3  fogColor  = mix( vec3(0.5,0.6,0.7), // bluish
-                           vec3(1.0,0.9,0.7), // yellowish
-                           pow(sunAmount,8.0) );
-    return mix( rgb, fogColor, fogAmount );
-}
-
-
-vec3 applyFogNonConstant( in vec3  rgb,      // original color of the pixel
-						  in float distance, // camera to point distance
-						  in vec3  rayOri,   // camera position
-						  in vec3  rayDir,
-						  in vec3  sunDir  )  // camera to point vector
-{
-	float b = 1.0;
-	float c = 1.0;
-    float fogAmount = c * exp(-rayOri.y*b) * (1.0-exp( -distance*rayDir.y*b ))/rayDir.y;
-	float sunAmount = max( dot( rayDir, sunDir ), 0.0 );
-    vec3  fogColor  = mix( vec3(0.5,0.6,0.7), // bluish
-                           vec3(1.0,0.9,0.7), // yellowish
-                           pow(sunAmount, 8.0) );
-    return mix( rgb, fogColor, fogAmount);
-}
 
 vec2 intersect_sphere(in vec4 sph, in vec3 ro, in vec3 rd)
 {
@@ -212,7 +183,7 @@ float cast_ray(in vec3 ro, in vec3 rd, in float steps, out vec4 color, out int s
 	dis.x = max (dis.x, 0.0);
 	dis.y = min (dis.y, 10.0);
 
-	float eps = max(1e-7, 4.0 * epsilon_factor * scale);
+	float eps = max(1e-7, 2.0 * epsilon_factor * scale);
 
 	// raymarch fractal distance field
 	vec4 trap;
@@ -235,9 +206,6 @@ float cast_ray(in vec3 ro, in vec3 rd, in float steps, out vec4 color, out int s
 }
 
 
-const vec3 light1 = vec3(  0.577, 0.577, -0.577 );
-const vec3 light2 = vec3( -0.707, 0.000,  0.707 );
-
 vec3 ray_march(in vec3 ro, in vec3 rd)
 {
 	vec4 pixelColor;
@@ -246,18 +214,19 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 	float t = cast_ray(ro, rd, max_steps, tra, steps_taken);
 
 	vec3 col;
+	col = hsv2rgb(vec3(length(tra.yzw), .8, .8));
+
 	if (t < 0.0) {
 		/* Color sky */
-     	col  = vec3(1.0);
+     	col = mix(col, SKY_COLOR, 1.0 - steps_taken/max_steps);
 	} else {
 	    // Color Fractal
-		col = hsv2rgb(vec3(length(tra.yzw), .8, .8));
 		//col = tra.xyz;
 
 		// Calculate Lighting
 		vec3 pos = ro + t*rd;
         vec3 nor = calculate_normal(pos, t);
-		vec3 lightDir = -rd;
+		vec3 lightDir = -camera_direction;
 
 		vec3 lightColor = vec3(1.0, 1.0, 1.0);
 
@@ -271,7 +240,7 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 		col *= (ambient + diffuse);
 	}
 
-	return applyFogNonConstant(col, t, ro, rd, light1);
+	return applyFog(col, t);
 }
 
 
