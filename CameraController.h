@@ -12,7 +12,7 @@ public:
 
 	CameraController(float viewportWidth, float viewportHeight);
 
-	const float* getCameraMatrix() const;
+	float getSpeed() const;
 
 	void update(const float dt);
 

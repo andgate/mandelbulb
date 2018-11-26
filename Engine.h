@@ -18,7 +18,7 @@ using namespace std;
 class Engine
 {
 public:
-	Engine(int width, int height, const string& title);
+	Engine(const string &title, const int &width, const int &height, const int &max_fps);
 	~Engine();
 
 	int run();
@@ -33,7 +33,11 @@ public:
 
 	void registerInputListener(InputListener *listener);
 
+	float getFPS();
+
 private:
+	int max_fps;
+	int cur_fps;
 	float deltaTime;
 	int mouseX, mouseY;
 	sf::String title;
@@ -69,6 +73,8 @@ private:
 
 	void centerMouse();
 	void wrapMouse();
+
+	void checkInput(const sf::Event &e);
 
 	/** OpenGL Helpers **/
 	void initGL();

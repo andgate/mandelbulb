@@ -16,6 +16,11 @@ CameraController::CameraController(float viewportWidth, float viewportHeight)
 	, speed(CAM_UNIT_SPEED)
 {}
 
+float CameraController::getSpeed() const
+{
+	return speed;
+}
+
 void CameraController::update(const float dt)
 {}
 

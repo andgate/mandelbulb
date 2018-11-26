@@ -15,6 +15,7 @@ uniform float screen_width;
 uniform float screen_height;
 
 uniform float epsilon_factor;
+uniform float epsilon_limit;
 uniform float max_dist;
 uniform float max_bailout;
 uniform int max_iter;
@@ -129,7 +130,7 @@ float map(in vec3 p, out vec4 pixelColor)
 vec3 calculate_normal(in vec3 p, in float mdist)
 {
     vec4 tmp;
-    float e = max(1e-32, 5.0f*epsilon_factor * scale);
+    float e = max(epsilon_limit, epsilon_factor * mdist);
 	return normalize(vec3(
         map(vec3(p.x + e, p.y, p.z), tmp) - map(vec3(p.x - e, p.y, p.z), tmp),
         map(vec3(p.x, p.y + e, p.z), tmp) - map(vec3(p.x, p.y - e, p.z), tmp),
@@ -140,7 +141,7 @@ vec3 calculate_normal(in vec3 p, in float mdist)
 vec3 calculate_normal_fast(in vec3 p, in float mdist)
 {
     vec4 tmp;
-    vec2 e = vec2(1.0, -1.0) * max(1e-32, 5.0f*epsilon_factor * scale);;
+    vec2 e = vec2(1.0, -1.0) * max(epsilon_limit, epsilon_factor * mdist);;
     return normalize( e.xyy*map(p + e.xyy, tmp) +
 	                  e.yyx*map(p + e.xyy, tmp) +
 					  e.yxy*map(p + e.yxy, tmp) +
@@ -183,15 +184,16 @@ float cast_ray(in vec3 ro, in vec3 rd, in float steps, out vec4 color, out int s
 	dis.x = max (dis.x, 0.0);
 	dis.y = min (dis.y, 10.0);
 
-	float eps = max(1e-7, 2.0 * epsilon_factor * scale);
+	//float eps = max(epsilon_limit, epsilon_factor * scale);
 
 	// raymarch fractal distance field
 	vec4 trap;
 	float t = dis.x;
-	float viewlimit = max(1e-7, max_dist * scale);
+	float viewlimit = max(epsilon_limit, max_dist * scale);
 	while (t < viewlimit || steps_taken < max_steps) {
 		vec3 pos = ro + rd*t;
 		float h = map( pos, trap );
+		float eps = max(epsilon_limit, epsilon_factor * t);
 		if (t > dis.y || t > viewlimit || h < eps) break;
 		t += h*0.9;
 		++steps_taken;

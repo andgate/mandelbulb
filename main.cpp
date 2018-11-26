@@ -6,6 +6,6 @@ using namespace std;
 
 int main (int argc, char** argv)
 {
-	MandelbulbViewer viewer(SCREEN_WIDTH, SCREEN_HEIGHT);
+	MandelbulbViewer viewer(SCREEN_WIDTH, SCREEN_HEIGHT, DEFAULT_FPS);
 	return viewer.run();
 }

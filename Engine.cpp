@@ -12,8 +12,9 @@ using namespace std;
 
 #include "Constants.h"
 
-Engine::Engine(int width, int height, const string& title)
-	: deltaTime(1.0f / 60.0f) // assume initial dt is at 60fps
+Engine::Engine(const string& title, const int &width, const int &height, const int &max_fps)
+	: max_fps(max_fps)
+	, deltaTime(1.0f / (float)max_fps) // assume initial dt is at 60fps
 	, mouseX(0) , mouseY(0)
 	, clock()
 	, listeners(new vector<InputListener*>())
@@ -62,48 +63,23 @@ int Engine::run()
 		sf::Event event;
 		while (window->pollEvent(event))
 		{
-			switch (event.type)
-			{
-			case sf::Event::Closed:
-                window->close();
-				break;
+			if (event.type == sf::Event::Closed) window->close();
 
-			case sf::Event::KeyPressed:
-				if (event.key.code == sf::Keyboard::Escape) window->close();
-				if (event.key.code == sf::Keyboard::F) {
-					isFullscreen = !isFullscreen; openWindow();
-				}
-				notifyKeyPressed(event.key.code, deltaTime);
-				heldKeys->insert(event.key.code);
-				break;
-
-			case sf::Event::KeyReleased:
-				notifyKeyReleased(event.key.code, deltaTime);
-				heldKeys->erase(event.key.code);
-				break;
-
-			case sf::Event::MouseMoved:
-				notifyMouseMoved(event.mouseMove, deltaTime);
-				break;
-
-			case sf::Event::MouseButtonPressed:
-				notifyMousePressed(event.mouseButton, deltaTime);
-				break;
-
-			case sf::Event::MouseButtonReleased:
-				notifyMouseReleased(event.mouseButton, deltaTime);
-				break;
-
-			case sf::Event::MouseWheelScrolled:
-				notifyMouseScrolled(event.mouseWheelScroll, deltaTime);
-				break;
-
-			default:
-				break;
+			if (event.type == sf::Event::GainedFocus) {
+				window->setMouseCursorGrabbed(true);
+				window->setMouseCursorVisible(false);
 			}
+
+			if (event.type == sf::Event::LostFocus) {
+				window->setMouseCursorGrabbed(false);
+				window->setMouseCursorVisible(true);
+			}
+
+			// Check for input events when a window has focus
+			if (window->hasFocus()) checkInput(event);
         }
 
-		centerMouse();
+		if (window->hasFocus()) centerMouse();  // THIS MUST BE OUTSIDE THE EVENT POLLING LOOP
 
 		if (!heldKeys->empty())
 		{
@@ -121,6 +97,7 @@ int Engine::run()
         window->display();
 
 		deltaTime = clock.restart().asSeconds();
+		cur_fps = 1.0f / deltaTime;
     }
 
 	return EXIT_SUCCESS;
@@ -284,6 +261,50 @@ void Engine::wrapMouse()
 
 	mouseX = mousePos.x;
 	mouseY = mousePos.y;
+}
+
+void Engine::checkInput(const sf::Event &event)
+{
+	switch (event.type)
+	{
+	case sf::Event::KeyPressed:
+		if (event.key.code == sf::Keyboard::Escape) window->close();
+		if (event.key.code == sf::Keyboard::F) {
+			isFullscreen = !isFullscreen; openWindow();
+		}
+		notifyKeyPressed(event.key.code, deltaTime);
+		heldKeys->insert(event.key.code);
+		break;
+
+	case sf::Event::KeyReleased:
+		notifyKeyReleased(event.key.code, deltaTime);
+		heldKeys->erase(event.key.code);
+		break;
+
+	case sf::Event::MouseMoved:
+		notifyMouseMoved(event.mouseMove, deltaTime);
+		break;
+
+	case sf::Event::MouseButtonPressed:
+		notifyMousePressed(event.mouseButton, deltaTime);
+		break;
+
+	case sf::Event::MouseButtonReleased:
+		notifyMouseReleased(event.mouseButton, deltaTime);
+		break;
+
+	case sf::Event::MouseWheelScrolled:
+		notifyMouseScrolled(event.mouseWheelScroll, deltaTime);
+		break;
+
+	default:
+		break;
+	}
+}
+
+float Engine::getFPS()
+{
+	return cur_fps;
 }
 
 /** OpenGL Helpers **/
