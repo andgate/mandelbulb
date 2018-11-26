@@ -13,3 +13,4 @@ The mouse is used to look around the world.
 - Right:      d
 - Adjust Speed:   Mouse wheel
 - Enable fullscreen: f
+- Show Debug Info:   Tab
