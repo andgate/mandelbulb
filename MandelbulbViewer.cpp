@@ -90,15 +90,11 @@ void MandelbulbViewer::update(const float dt)
 	shader->setUniform("screen_height", screenHeight);
 	
 	shader->setUniform("epsilon_factor", EPSILON_FACTOR);
-	shader->setUniform("max_dist", 5.0f);
+	shader->setUniform("max_dist", MAX_DIST);
 	shader->setUniform("max_bailout", MAX_BAILOUT);
 	shader->setUniform("max_iter", MAX_ITER);
 	shader->setUniform("max_steps", MAX_STEPS);
-
-	
-
-//	float zoom = cam->camera->zoom;
-//	shader->setUniform("zoom", zoom);
+	shader->setUniform("power", POWER);
 
 	sf::Shader::bind(NULL);
 }

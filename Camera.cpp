@@ -5,6 +5,7 @@
 using namespace std;
 
 #include "Vector3f.h"
+#include "Constants.h"
 
 Camera::Camera(float viewportWidth, float viewportHeight)
   : position(0.0f, 0.0f, -3.0f)
@@ -47,7 +48,7 @@ float inversesqrt(float n)
 	return y;
 }
 
-float sdfMandelbulb(const Vector3f &p)
+float sdfMandelbulb_fast(const Vector3f &p)
 {
 	Vector3f q = p;
 	float m = q.dot(q);
@@ -80,10 +81,39 @@ float sdfMandelbulb(const Vector3f &p)
 	return 0.25f*log(m)*sqrt(m)/dr;
 }
 
+float sdfMandelbulb(const Vector3f &p, const int &power)
+{
+	Vector3f q(p);
+	float r = q.length();
+	float dr = 1.0f;
+
+	int i = MAX_ITER;
+	while (r < DIVERGENCE && i-- > 0)
+	{
+		float ph = asinf( q.z/r );
+		float th = atanf( q.y / q.x );
+		float zr = powf( r, power - 1.0f );
+
+		dr = zr * dr * power + 1.0f;
+		zr *= r;
+
+		float sph = sin(power*ph); float cph = cos(power*ph);
+		float sth = sin(power*th); float cth = cos(power*th);
+
+        q.x = zr * cph*cth + p.x;
+		q.y = zr * cph*sth + p.y;
+		q.z = zr * sph     + p.z;
+
+		r = q.length();
+	}
+
+	return 0.5f*log(r)*r/dr;
+}
+
 
 float Camera::estimateMandelbulbDistance() const
 {
-	return sdfMandelbulb(position);
+	return sdfMandelbulb_fast(position);
 }
 
 

@@ -19,11 +19,14 @@ uniform float max_dist;
 uniform float max_bailout;
 uniform int max_iter;
 uniform int max_steps;
+uniform int power;
 
 
+float DIVERGENCE = 2.0f;
 
 in vec3 Color;
 out vec4 o_color;
+
 
 vec3 hsv2rgb(vec3 c)
 {
@@ -43,7 +46,41 @@ vec3 rgb2hsv(vec3 c)
     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
-float sdfMandelbulb(vec3 p, out vec4 pixelColor, in float mdist)
+
+float sdfMandelbulb(vec3 p, in int power, out vec4 pixelColor)
+{
+	vec3 q = p;
+	float r = length(q);
+	float dr = 1.0;
+	vec4 trap = vec4(abs(q), r);
+
+	int i = max_iter;
+	while (r < DIVERGENCE && i-- > 0)
+	{
+		float ph = asin( q.z/r );
+		float th = atan( q.y / q.x );
+		float zr = pow( r, power - 1.0f );
+
+		dr = zr * dr * power + 1.0f;
+		zr *= r;
+
+		float sph = sin(power*ph); float cph = cos(power*ph);
+		float sth = sin(power*th); float cth = cos(power*th);
+
+        q.x = zr * cph*cth + p.x;
+		q.y = zr * cph*sth + p.y;
+		q.z = zr * sph     + p.z;
+
+		trap = min( trap, vec4(abs(p),r) );
+
+		r = length(q);
+	}
+
+	pixelColor = vec4(r, trap.yzw);
+	return 0.5f*log(r)*r/dr;
+}
+
+float sdfMandelbulb_fast(vec3 p, out vec4 pixelColor)
 {
 	vec3 q = p;
 	float m = dot(q,q);
@@ -81,20 +118,31 @@ float sdfMandelbulb(vec3 p, out vec4 pixelColor, in float mdist)
 	return 0.25*log(m)*sqrt(m)/dr;
 }
 
-float map(in vec3 p, out vec4 pixelColor, in float mdist)
+float map(in vec3 p, out vec4 pixelColor)
 {
-	float bulb_distance = sdfMandelbulb(p, pixelColor, mdist);
+	float bulb_distance = sdfMandelbulb_fast(p, pixelColor);
     return bulb_distance;
 }
 
-vec3 calculate_normal(in vec3 p, in float t, const float mdist)
+vec3 calculate_normal(in vec3 p, in float mdist)
+{
+    vec4 tmp;
+    float e = max(1e-7, 2.0f*epsilon_factor * scale);
+	return normalize(vec3(
+        map(vec3(p.x + e, p.y, p.z), tmp) - map(vec3(p.x - e, p.y, p.z), tmp),
+        map(vec3(p.x, p.y + e, p.z), tmp) - map(vec3(p.x, p.y - e, p.z), tmp),
+        map(vec3(p.x, p.y, p.z  + e), tmp) - map(vec3(p.x, p.y, p.z - e), tmp)
+    ));
+}
+
+vec3 calculate_normal_fast(in vec3 p, in float mdist)
 {
     vec4 tmp;
     vec2 e = vec2(1.0, -1.0) * epsilon_factor * scale;
-    return normalize( e.xyy*map(p + e.xyy, tmp, mdist) +
-	                  e.yyx*map(p + e.xyy, tmp, mdist) +
-					  e.yxy*map(p + e.yxy, tmp, mdist) +
-				      e.xxx*map(p + e.xxx, tmp, mdist) );
+    return normalize( e.xyy*map(p + e.xyy, tmp) +
+	                  e.yyx*map(p + e.xyy, tmp) +
+					  e.yxy*map(p + e.yxy, tmp) +
+				      e.xxx*map(p + e.xxx, tmp) );
 }
 
 
@@ -135,7 +183,7 @@ vec3 applyFogNonConstant( in vec3  rgb,      // original color of the pixel
     vec3  fogColor  = mix( vec3(0.5,0.6,0.7), // bluish
                            vec3(1.0,0.9,0.7), // yellowish
                            pow(sunAmount, 8.0) );
-    return mix( rgb, fogColor, fogAmount );
+    return mix( rgb, fogColor, fogAmount);
 }
 
 vec2 intersect_sphere(in vec4 sph, in vec3 ro, in vec3 rd)
@@ -164,20 +212,21 @@ float cast_ray(in vec3 ro, in vec3 rd, in float steps, out vec4 color, out int s
 	dis.x = max (dis.x, 0.0);
 	dis.y = min (dis.y, 10.0);
 
-	float eps = epsilon_factor * scale;
+	float eps = max(1e-7, 4.0 * epsilon_factor * scale);
 
 	// raymarch fractal distance field
 	vec4 trap;
 	float t = dis.x;
-	for (int i = 0; i < steps; ++i) { 
+	float viewlimit = max(1e-7, max_dist * scale);
+	while (t < viewlimit || steps_taken < max_steps) {
 		vec3 pos = ro + rd*t;
-		float h = map( pos, trap, t );
-		
-		if ( t>dis.y || h<eps ) { steps_taken = i; break; }
-		t += h;
+		float h = map( pos, trap );
+		if (t > dis.y || t > viewlimit || h < eps) break;
+		t += h*0.9;
+		++steps_taken;
 	}
     
-	if (t < dis.y) {
+	if (t < dis.y && t < viewlimit) {
 		color = trap;
 		res = t;
 	}
@@ -192,17 +241,14 @@ const vec3 light2 = vec3( -0.707, 0.000,  0.707 );
 vec3 ray_march(in vec3 ro, in vec3 rd)
 {
 	vec4 pixelColor;
-	float mdist = abs(map(ro, pixelColor, 1.0));
-
 	vec4 tra;
 	int steps_taken;
-
 	float t = cast_ray(ro, rd, max_steps, tra, steps_taken);
 
 	vec3 col;
 	if (t < 0.0) {
 		/* Color sky */
-     	col  = vec3(0.7,0.7,0.7);
+     	col  = vec3(1.0);
 	} else {
 	    // Color Fractal
 		col = hsv2rgb(vec3(length(tra.yzw), .8, .8));
@@ -210,7 +256,7 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 
 		// Calculate Lighting
 		vec3 pos = ro + t*rd;
-        vec3 nor = calculate_normal( pos, t, mdist );
+        vec3 nor = calculate_normal(pos, t);
 		vec3 lightDir = -rd;
 
 		vec3 lightColor = vec3(1.0, 1.0, 1.0);

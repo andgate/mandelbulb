@@ -27,7 +27,7 @@ public:
 	void mouseScrolled(const float delta, const int mouseX, const int mouseY, const float dt);
 
 private:
-	float speed_up;
+	float speed;
 };
 
 

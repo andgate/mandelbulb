@@ -10,6 +10,7 @@ using namespace std;
 #include <SFML/Window.hpp>
 #include <SFML/OpenGL.hpp>
 
+#include "Constants.h"
 
 Engine::Engine(int width, int height, const string& title)
 	: deltaTime(1.0f / 60.0f) // assume initial dt is at 60fps
@@ -17,19 +18,17 @@ Engine::Engine(int width, int height, const string& title)
 	, clock()
 	, listeners(new vector<InputListener*>())
 	, heldKeys(new unordered_set<sf::Keyboard::Key>())
+	, title(sf::String(title.c_str()))
+	, settings()
+	, isFullscreen(IS_FULLSCREEN)
 {
-	// Have to pass title as a c_str,
-	// or else sfml crashes
-	sf::String title_sf = sf::String(title.c_str());
-
-	sf::ContextSettings settings;
 	settings.depthBits = 24;
 	settings.stencilBits = 8;
 	settings.antialiasingLevel = 4;
 	settings.majorVersion = 4;
 	settings.minorVersion = 4;
 
-	window = new sf::RenderWindow(sf::VideoMode(width, height), title_sf, sf::Style::Default, settings);
+	window = new sf::RenderWindow(sf::VideoMode(width, height), title, sf::Style::Default, settings);
 	window->setMouseCursorGrabbed(true);
 	window->setMouseCursorVisible(false);
 
@@ -71,6 +70,9 @@ int Engine::run()
 
 			case sf::Event::KeyPressed:
 				if (event.key.code == sf::Keyboard::Escape) window->close();
+				if (event.key.code == sf::Keyboard::F) {
+					isFullscreen = !isFullscreen; openWindow();
+				}
 				notifyKeyPressed(event.key.code, deltaTime);
 				heldKeys->insert(event.key.code);
 				break;
@@ -233,6 +235,32 @@ void Engine::notifyMouseScrolled(const sf::Event::MouseWheelScrollEvent &ev, con
 		l->mouseScrolled(ev.delta, ev.x, ev.y, dt);
 	}
 }
+
+void Engine::openWindow()
+{
+	if (isFullscreen)
+		openFullscreenWindow();
+	else
+		openDefaultWindow();
+}
+
+void Engine::openDefaultWindow()
+{
+	window->create(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), title, sf::Style::Default, settings);
+	window->setMouseCursorGrabbed(true);
+	window->setMouseCursorVisible(false);
+	isFullscreen = false;
+}
+
+void Engine::openFullscreenWindow()
+{
+	window->create(sf::VideoMode::getFullscreenModes() [0], title, sf::Style::Fullscreen, settings);	
+	window->setMouseCursorGrabbed(true);
+	window->setMouseCursorVisible(false);
+	isFullscreen = true;
+}
+
+
 
 void Engine::centerMouse()
 {

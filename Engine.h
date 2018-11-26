@@ -36,6 +36,9 @@ public:
 private:
 	float deltaTime;
 	int mouseX, mouseY;
+	sf::String title;
+	sf::ContextSettings settings;
+	bool isFullscreen;
 
 	sf::RenderWindow *window;
 	sf::Clock clock;
@@ -59,6 +62,10 @@ private:
 	void notifyMousePressed(const sf::Event::MouseButtonEvent &ev, const float dt) const;
 	void notifyMouseReleased(const sf::Event::MouseButtonEvent &ev, const float dt) const;
 	void notifyMouseScrolled(const sf::Event::MouseWheelScrollEvent &ev, const float dt) const;
+	
+	void openWindow();
+	void openDefaultWindow();
+	void openFullscreenWindow();
 
 	void centerMouse();
 	void wrapMouse();
