@@ -20,6 +20,7 @@ private:
 	{
 	public:
 		bool infoToggle;
+		bool fogToggle;
 
 		ViewerInputListener();
 

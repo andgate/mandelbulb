@@ -13,12 +13,15 @@ const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
 
 const float EPSILON_FACTOR = 0.001f;
-const float EPSILON_LIMIT = 1e-6;
-const float MAX_BAILOUT = 4.0f;  // probably can compute this
-const int MAX_ITER = 11;
-const int MAX_STEPS = 250;
-const float MAX_DIST = 100.0f;
-const float DIVERGENCE = 2.0f;
+const float EPSILON_LIMIT = 1e-6f;
+const float MAX_BAILOUT = 2.0f;
+const int MAX_ITER = 100;
+const int MIN_ITER = 4;
+const int MAX_STEPS = 100;
+const float MAX_DIST = 400.0f;
 const int POWER = 8;
+
+const bool FOG_ENABLED = true;
+const float FOG_MAX_DIST = 300.0f;
 
 #endif /* CONSTANTS_H */

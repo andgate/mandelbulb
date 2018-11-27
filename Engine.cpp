@@ -46,16 +46,14 @@ Engine::~Engine()
 
 int Engine::run()
 {
-	window->setVerticalSyncEnabled(true);
+	window->setVerticalSyncEnabled(false);
 	window->setActive(true);
 
-	//initGL();
 	init();
 
 	clock.restart();
 
 	centerMouse();
-
 	while (window->isOpen())
     {
 		preupdate();
@@ -77,7 +75,7 @@ int Engine::run()
 
 			// Check for input events when a window has focus
 			if (window->hasFocus()) checkInput(event);
-        }
+		}
 
 		if (window->hasFocus()) centerMouse();  // THIS MUST BE OUTSIDE THE EVENT POLLING LOOP
 
@@ -92,12 +90,14 @@ int Engine::run()
 		updateInputListeners(deltaTime);
 		update(deltaTime);
 
-        window->clear(sf::Color::Black);
+		window->clear(sf::Color::Black);
 		draw();
-        window->display();
+		window->display();
 
 		deltaTime = clock.restart().asSeconds();
 		cur_fps = 1.0f / deltaTime;
+
+		
     }
 
 	return EXIT_SUCCESS;
@@ -305,37 +305,4 @@ void Engine::checkInput(const sf::Event &event)
 float Engine::getFPS()
 {
 	return cur_fps;
-}
-
-/** OpenGL Helpers **/
-
-void Engine::initGL()
-{
-	// Set color and depth clear value
-	glClearDepth(1.f);
-	glClearColor(0.f, 0.f, 0.f, 0.f);
-
-	// Enable Z-buffer read and write
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-
-
-	// Setup a perspective projection
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	perspectiveGL(90.f, 1.f, 1.f, 500.f);
-}
-
-void Engine::perspectiveGL( double fovY, double aspect, double zNear, double zFar )
-{
-    const double pi = 3.1415926535897932384626433832795;
-    double fW, fH;
-
-    //fH = tan( (fovY / 2) / 180 * pi ) * zNear;
-    fH = tan( fovY / 360 * pi ) * zNear;
-    fW = fH * aspect;
-
-    glFrustum( (GLdouble)  -fW, (GLdouble)fW
-		     , (GLdouble)  -fH, (GLdouble)fH
-			 , (GLdouble)zNear, (GLdouble)zFar );
 }

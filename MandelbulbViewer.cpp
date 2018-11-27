@@ -119,8 +119,12 @@ void MandelbulbViewer::update(const float dt)
 	shader->setUniform("max_dist", MAX_DIST);
 	shader->setUniform("max_bailout", MAX_BAILOUT);
 	shader->setUniform("max_iter", MAX_ITER);
+	shader->setUniform("min_iter", MIN_ITER);
 	shader->setUniform("max_steps", MAX_STEPS);
 	shader->setUniform("power", POWER);
+
+	shader->setUniform("fog_enabled", viewer->fogToggle);
+	shader->setUniform("fog_max_dist", FOG_MAX_DIST);
 
 	sf::Shader::bind(NULL);
 
@@ -135,6 +139,9 @@ void MandelbulbViewer::draw()
 		engine->getWindow()->draw(info);
 	}
 }
+
+
+float lerp(float a, float b, float f) { return a + f * (b - a); }
 
 void MandelbulbViewer::updateInfo()
 {
@@ -152,6 +159,8 @@ void MandelbulbViewer::updateInfo()
 
 	float scale = cam->camera->scale();
 	ss << "scale: " << scale << endl;
+	ss << "1/scale: " << 1.0f/scale << endl;
+	ss << "pow(scale, 2): " << pow(scale, 2) << endl;
 
 	float epsilon = EPSILON_FACTOR * scale;
 	ss << "epsilon: " << epsilon << endl;
@@ -159,18 +168,28 @@ void MandelbulbViewer::updateInfo()
 	float viewlimit = MAX_DIST * scale;
 	ss << "viewlimit: " << viewlimit << endl;
 
+	//float curr_max_iter = lerp(MIN_ITER, MAX_ITER, 1.0 - scale);
+	//ss << "curr_max_iter: " << curr_max_iter << endl;
+
+	//float max_bailout = MAX_BAILOUT * scale;
+	//ss << "max_bailout: " << max_bailout << endl;
+
 	info.setString(ss.str());
 	infoBg.setSize(sf::Vector2f(info.getGlobalBounds().width, info.getGlobalBounds().height));
 }
 
 
-MandelbulbViewer::ViewerInputListener::ViewerInputListener() : infoToggle(false) {}
+MandelbulbViewer::ViewerInputListener::ViewerInputListener()
+	: infoToggle(false)
+	, fogToggle(FOG_ENABLED)
+{}
 
 void MandelbulbViewer::ViewerInputListener::update(const float dt) {}
 
 void MandelbulbViewer::ViewerInputListener::keyPressed(const sf::Keyboard::Key &key, const float dt)
 {
 	if (key == sf::Keyboard::Tab) infoToggle = !infoToggle;
+	if (key == sf::Keyboard::Num1) fogToggle = !fogToggle;
 }
 
 void MandelbulbViewer::ViewerInputListener::keyHeld(const sf::Keyboard::Key &key, const float dt) {}

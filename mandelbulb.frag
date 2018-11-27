@@ -1,4 +1,4 @@
-#version 330
+#version 400
 
 #define M_PI 3.1415926535897932384626433832795
 #define FLT_MIN 1.175494351e-38
@@ -16,14 +16,16 @@ uniform float screen_height;
 
 uniform float epsilon_factor;
 uniform float epsilon_limit;
+
 uniform float max_dist;
 uniform float max_bailout;
 uniform int max_iter;
+uniform int min_iter;
 uniform int max_steps;
 uniform int power;
 
-
-float DIVERGENCE = 2.0f;
+uniform float fog_max_dist;
+uniform bool fog_enabled;
 
 vec3 SKY_COLOR = vec3(1.0,1.0,1.0);
 
@@ -57,8 +59,9 @@ float sdfMandelbulb(vec3 p, in int power, out vec4 pixelColor)
 	float dr = 1.0;
 	vec4 trap = vec4(abs(q), r);
 
+	//float miter = mix(min_iter, max_iter, 1.0 - scale);
 	int i = max_iter;
-	while (r < DIVERGENCE && i-- > 0)
+	while (r < max_bailout && i-- > 0)
 	{
 		float ph = asin( q.z/r );
 		float th = atan( q.y / q.x );
@@ -80,7 +83,7 @@ float sdfMandelbulb(vec3 p, in int power, out vec4 pixelColor)
 	}
 
 	pixelColor = vec4(r, trap.yzw);
-	return 0.5f*log(r)*r/dr;
+	return 0.5*log(r)*r/dr;
 }
 
 float sdfMandelbulb_fast(vec3 p, out vec4 pixelColor)
@@ -90,6 +93,7 @@ float sdfMandelbulb_fast(vec3 p, out vec4 pixelColor)
 	float dr = 1.0;
 	vec4 trap = vec4(abs(q), m);
 
+	float miter = smoothstep(min_iter, max_iter, 1.0 - scale);
 	for (int i = 0; i < max_iter; ++i)
 	{
 		float m2 = m*m;
@@ -112,8 +116,7 @@ float sdfMandelbulb_fast(vec3 p, out vec4 pixelColor)
 		trap = min( trap, vec4(abs(q),m) );
 
         m = dot(q,q);
-		if( m > max_bailout )
-            break;
+		if( m > max_bailout ) break;
 	}
 
 	//pixelColor = vec4(hsv2rgb(vec3(vec4(m, trap.yzw), 0.8, 0.8)), 1.0f;
@@ -152,8 +155,8 @@ vec3 calculate_normal_fast(in vec3 p, in float mdist)
 vec3 applyFog( in vec3  rgb,       // original color of the pixel
                in float distance ) // camera to point distance
 {
-	float foglimit = max(1e-7, 1.0 * max_dist * scale);
-	float fogAmount = min(1.0, distance / foglimit);
+	float fog_dist = distance / max(fog_max_dist*epsilon_limit, fog_max_dist*scale);
+	float fogAmount = min(1.0, fog_dist);
     return mix( rgb, SKY_COLOR, fogAmount );
 }
 
@@ -184,19 +187,16 @@ float cast_ray(in vec3 ro, in vec3 rd, in float steps, out vec4 color, out int s
 	dis.x = max (dis.x, 0.0);
 	dis.y = min (dis.y, 10.0);
 
-	//float eps = max(epsilon_limit, epsilon_factor * scale);
-
 	// raymarch fractal distance field
 	vec4 trap;
 	float t = dis.x;
-	float viewlimit = max(epsilon_limit, max_dist * scale);
-	while (t < viewlimit || steps_taken < max_steps) {
+	float viewlimit = max(max_dist*epsilon_limit, max_dist * scale);
+	while (t < viewlimit || steps_taken++ < max_steps) {
 		vec3 pos = ro + rd*t;
 		float h = map( pos, trap );
-		float eps = max(epsilon_limit, epsilon_factor * t);
-		if (t > dis.y || t > viewlimit || h < eps) break;
+		float eps = max(epsilon_limit, 1.0*epsilon_factor*t);
+		if (t > dis.y || t > viewlimit || h*(0.9) < eps) break;
 		t += h*0.9;
-		++steps_taken;
 	}
     
 	if (t < dis.y && t < viewlimit) {
@@ -208,9 +208,13 @@ float cast_ray(in vec3 ro, in vec3 rd, in float steps, out vec4 color, out int s
 }
 
 
+vec3 glow(in vec3 col, in vec3 glowColor, in float strength)
+{
+	return mix(col, glowColor, strength); 
+}
+
 vec3 ray_march(in vec3 ro, in vec3 rd)
 {
-	vec4 pixelColor;
 	vec4 tra;
 	int steps_taken;
 	float t = cast_ray(ro, rd, max_steps, tra, steps_taken);
@@ -220,11 +224,8 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 
 	if (t < 0.0) {
 		/* Color sky */
-     	col = mix(col, SKY_COLOR, 1.0 - steps_taken/max_steps);
+     	col = SKY_COLOR;
 	} else {
-	    // Color Fractal
-		//col = tra.xyz;
-
 		// Calculate Lighting
 		vec3 pos = ro + t*rd;
         vec3 nor = calculate_normal(pos, t);
@@ -240,9 +241,13 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 		vec3 diffuse = diff * lightColor;
 
 		col *= (ambient + diffuse);
+		//col = glow(col, vec3(1.0, 1.0, 0.0), steps_taken/max_steps);
+		
+		if (fog_enabled) col = applyFog(col, t);
 	}
 
-	return applyFog(col, t);
+	return col;
+
 }
 
 

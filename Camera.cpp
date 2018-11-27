@@ -88,7 +88,7 @@ float sdfMandelbulb(const Vector3f &p, const int &power)
 	float dr = 1.0f;
 
 	int i = MAX_ITER;
-	while (r < DIVERGENCE && i-- > 0)
+	while (r < MAX_BAILOUT && i-- > 0)
 	{
 		float ph = asinf( q.z/r );
 		float th = atanf( q.y / q.x );
