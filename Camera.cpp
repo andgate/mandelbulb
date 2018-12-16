@@ -2,13 +2,14 @@
 
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 using namespace std;
 
 #include "Vector3f.h"
 #include "Constants.h"
 
 Camera::Camera(float viewportWidth, float viewportHeight)
-  : position(0.0f, 0.0f, -3.0f)
+  : position(CAM_INITIAL_POS)
   , direction(0.0f, 0.0f, 1.0f)
   , up(0.0f, 1.0f, 0.0f)
   , viewportWidth(viewportWidth)
@@ -119,7 +120,7 @@ float Camera::estimateMandelbulbDistance() const
 
 float Camera::scale(const float &unit) const
 {
+	float idist = sdfMandelbulb(CAM_INITIAL_POS, POWER);
 	float mdist = estimateMandelbulbDistance();
-	if (abs(mdist) >= unit) return unit;
-	else return abs(mdist / unit);
+	return min(idist, abs(mdist / idist));
 }

@@ -100,7 +100,6 @@ void CameraController::mouseScrolled(const float scrollDelta, const int mouseX, 
 {
 	speed += scrollDelta*0.2f;
 	speed = max(0.1f, speed);
-	cout << speed << endl;
 }
 
 // Unused functions

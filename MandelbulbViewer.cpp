@@ -126,6 +126,11 @@ void MandelbulbViewer::update(const float dt)
 	shader->setUniform("fog_enabled", viewer->fogToggle);
 	shader->setUniform("fog_max_dist", FOG_MAX_DIST);
 
+	shader->setUniform("glow_dist", GLOW_DIST);
+	shader->setUniform("glow_enabled", viewer->glowToggle);
+
+	shader->setUniform("heat_enabled", viewer->heatToggle);
+
 	sf::Shader::bind(NULL);
 
 	if (viewer->infoToggle) updateInfo();
@@ -182,6 +187,8 @@ void MandelbulbViewer::updateInfo()
 MandelbulbViewer::ViewerInputListener::ViewerInputListener()
 	: infoToggle(false)
 	, fogToggle(FOG_ENABLED)
+	, glowToggle(GLOW_ENABLED)
+	, heatToggle(HEAT_ENABLED)
 {}
 
 void MandelbulbViewer::ViewerInputListener::update(const float dt) {}
@@ -190,6 +197,8 @@ void MandelbulbViewer::ViewerInputListener::keyPressed(const sf::Keyboard::Key &
 {
 	if (key == sf::Keyboard::Tab) infoToggle = !infoToggle;
 	if (key == sf::Keyboard::Num1) fogToggle = !fogToggle;
+	if (key == sf::Keyboard::Num2) glowToggle = !glowToggle;
+	if (key == sf::Keyboard::Num3) heatToggle = !heatToggle;
 }
 
 void MandelbulbViewer::ViewerInputListener::keyHeld(const sf::Keyboard::Key &key, const float dt) {}

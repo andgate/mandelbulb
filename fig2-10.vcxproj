@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -23,31 +23,32 @@
     <SccLocalPath />
     <ProjectGuid>{4824792B-FE40-57BD-EBD6-B3A2B1E6AE38}</ProjectGuid>
     <ProjectName>mandelbulb</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -143,7 +144,7 @@
       <ObjectFileName>$(SolutionDir)$(Platform)\$(Configuration)\</ObjectFileName>
       <ProgramDataBaseFileName>$(SolutionDir)$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <AdditionalIncludeDirectories>$(SolutionDir)\SFML-2.4.2-windows-vc11-64-bit\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\SFML-2.5.0\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Midl>
       <TypeLibraryName>.\Debug\fig2-10.tlb</TypeLibraryName>
@@ -232,7 +233,7 @@ copy "$(SolutionDir)\SFML-2.5.1-windows-vc12-32-bit\bin\sfml-window-2.dll" "$(Ta
       <PrecompiledHeaderOutputFile>$(SolutionDir)$(Platform)\$(Configuration)\mandelbulb.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(SolutionDir)$(Platform)\$(Configuration)\</ObjectFileName>
       <ProgramDataBaseFileName>$(SolutionDir)$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
-      <AdditionalIncludeDirectories>$(SolutionDir)\SFML-2.4.2-windows-vc11-64-bit\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\SFML-2.5.0\include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Midl>
       <TypeLibraryName>.\Release\fig2-10.tlb</TypeLibraryName>
@@ -249,13 +250,13 @@ copy "$(SolutionDir)\SFML-2.5.1-windows-vc12-32-bit\bin\sfml-window-2.dll" "$(Ta
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <SubSystem>Console</SubSystem>
       <OutputFile>$(SolutionDir)$(Platform)\$(Configuration)\mandelbulb.exe</OutputFile>
-      <AdditionalDependencies>freetype.lib;sfml-graphics.lib;sfml-window.lib;sfml-system.lib;sfml-main.lib;freetype.lib;opengl32.lib;winmm.lib;gdi32.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)\SFML-2.4.2-windows-vc11-64-bit\lib;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>freetype.lib;sfml-graphics.lib;sfml-window.lib;sfml-system.lib;sfml-main.lib;opengl32.lib;winmm.lib;gdi32.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\SFML-2.5.0\lib;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(SolutionDir)\SFML-2.4.2-windows-vc11-64-bit\bin\sfml-system-2.dll" "$(OutDir)"
-copy "$(SolutionDir)\SFML-2.4.2-windows-vc11-64-bit\bin\sfml-window-2.dll" "$(OutDir)"
-copy "$(SolutionDir)\SFML-2.4.2-windows-vc11-64-bit\bin\sfml-graphics-2.dll" "$(OutDir)"
+      <Command>copy "$(SolutionDir)\SFML-2.5.0\bin\sfml-system-2.dll" "$(OutDir)"
+copy "$(SolutionDir)\SFML-2.5.0\bin\sfml-window-2.dll" "$(OutDir)"
+copy "$(SolutionDir)\SFML-2.5.0\bin\sfml-graphics-2.dll" "$(OutDir)"
 copy "$(SolutionDir)\mandelbulb.vert" "$(OutDir)"
 copy "$(SolutionDir)\mandelbulb.frag" "$(OutDir)"
 copy "$(SolutionDir)\arial.ttf" "$(OutDir)"</Command>

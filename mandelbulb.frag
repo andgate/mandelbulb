@@ -1,6 +1,7 @@
 #version 400
 
 #define M_PI 3.1415926535897932384626433832795
+#define M_2PI 6.28318530718
 #define FLT_MIN 1.175494351e-38
 
 uniform vec3 camera_position;
@@ -27,7 +28,12 @@ uniform int power;
 uniform float fog_max_dist;
 uniform bool fog_enabled;
 
-vec3 SKY_COLOR = vec3(1.0,1.0,1.0);
+uniform float glow_dist;
+uniform bool glow_enabled;
+
+uniform bool heat_enabled;
+
+vec3 SKY_COLOR = vec3(0.0,0.0,0.0);
 
 in vec3 Color;
 out vec4 o_color;
@@ -52,16 +58,17 @@ vec3 rgb2hsv(vec3 c)
 }
 
 
-float sdfMandelbulb(vec3 p, in int power, out vec4 pixelColor)
+float sdfMandelbulb(vec3 p, in int power, out float iter, out vec4 trap)
 {
 	vec3 q = p;
 	float r = length(q);
 	float dr = 1.0;
-	vec4 trap = vec4(abs(q), r);
+	float dtrap = 1.0;
+	trap = vec4(abs(q), r);
 
 	//float miter = mix(min_iter, max_iter, 1.0 - scale);
-	int i = max_iter;
-	while (r < max_bailout && i-- > 0)
+	iter = 0;
+	while (iter < max_iter && r < max_bailout)
 	{
 		float ph = asin( q.z/r );
 		float th = atan( q.y / q.x );
@@ -77,12 +84,12 @@ float sdfMandelbulb(vec3 p, in int power, out vec4 pixelColor)
 		q.y = zr * cph*sth + p.y;
 		q.z = zr * sph     + p.z;
 
-		trap = min( trap, vec4(abs(p),r) );
-
+		trap = min( trap, vec4(abs(q), r) );
 		r = length(q);
+		iter++;
 	}
 
-	pixelColor = vec4(r, trap.yzw);
+	//trap = vec4(r, trap.yzw);
 	return 0.5*log(r)*r/dr;
 }
 
@@ -124,23 +131,25 @@ float sdfMandelbulb_fast(vec3 p, out vec4 pixelColor)
 	return 0.25*log(m)*sqrt(m)/dr;
 }
 
-float map(in vec3 p, out vec4 pixelColor)
+float map(in vec3 p, out float iter, out vec4 trap)
 {
-	float bulb_distance = sdfMandelbulb(p, power, pixelColor);
+	float bulb_distance = sdfMandelbulb(p, power, iter, trap);
     return bulb_distance;
 }
 
 vec3 calculate_normal(in vec3 p, in float mdist)
 {
-    vec4 tmp;
+	float tmp1;
+    vec4 tmp2;
     float e = max(epsilon_limit, epsilon_factor * mdist);
 	return normalize(vec3(
-        map(vec3(p.x + e, p.y, p.z), tmp) - map(vec3(p.x - e, p.y, p.z), tmp),
-        map(vec3(p.x, p.y + e, p.z), tmp) - map(vec3(p.x, p.y - e, p.z), tmp),
-        map(vec3(p.x, p.y, p.z  + e), tmp) - map(vec3(p.x, p.y, p.z - e), tmp)
+        map(vec3(p.x + e, p.y, p.z), tmp1, tmp2) - map(vec3(p.x - e, p.y, p.z), tmp1, tmp2),
+        map(vec3(p.x, p.y + e, p.z), tmp1, tmp2) - map(vec3(p.x, p.y - e, p.z), tmp1, tmp2),
+        map(vec3(p.x, p.y, p.z  + e), tmp1, tmp2) - map(vec3(p.x, p.y, p.z - e), tmp1, tmp2)
     ));
 }
 
+/*
 vec3 calculate_normal_fast(in vec3 p, in float mdist)
 {
     vec4 tmp;
@@ -149,7 +158,7 @@ vec3 calculate_normal_fast(in vec3 p, in float mdist)
 	                  e.yyx*map(p + e.xyy, tmp) +
 					  e.yxy*map(p + e.yxy, tmp) +
 				      e.xxx*map(p + e.xxx, tmp) );
-}
+}*/
 
 
 vec3 applyFog( in vec3  rgb,       // original color of the pixel
@@ -158,6 +167,16 @@ vec3 applyFog( in vec3  rgb,       // original color of the pixel
 	float fog_dist = distance / max(fog_max_dist*epsilon_limit, fog_max_dist*scale);
 	float fogAmount = min(1.0, fog_dist);
     return mix( rgb, SKY_COLOR, fogAmount );
+}
+
+vec3 glow(in vec3 col, in vec3 glowColor, in float mdist)
+{
+	// Apply glow
+	float gd = glow_dist*scale;
+	if (mdist < glow_dist*scale)
+		return mix(col, glowColor, 1.0 - mdist/(glow_dist*scale));
+	else
+		return col;
 }
 
 
@@ -176,56 +195,67 @@ vec2 intersect_sphere(in vec4 sph, in vec3 ro, in vec3 rd)
     return -b + vec2(-h,h);
 }
 
-float cast_ray(in vec3 ro, in vec3 rd, in float steps, out vec4 color, out int steps_taken)
+float cast_ray(in vec3 ro, in vec3 rd, out int steps, out float eps, out float iter, out vec4 trap, out float mt, out float min_eps, out float max_v)
 {
     float res = -1.0;
 
-	// bounding sphere
-	vec2 dis = intersect_sphere (vec4(0.0,0.0,0.0,1.25), ro, rd);
+	vec3 pos;
+	float t = 0.0;
+	float h = 0.0;
+	float prev_h = 0.0;
+	mt = 1e10;
+	float avg_v = 0.0;
+	max_v = 0.0;
+	min_eps = 10000.0;
 	
-	if (dis.y < 0.0) return -1.0;
-	dis.x = max (dis.x, 0.0);
-	dis.y = min (dis.y, 10.0);
+	// Perform Ray March
+	float focal_distance = max(max_dist*epsilon_limit, max_dist * scale);
+	while (t < focal_distance && ++steps < max_steps) {
+		pos = ro + t*rd;
+		h = map( pos, iter, trap );
 
-	// raymarch fractal distance field
-	vec4 trap;
-	float t = dis.x;
-	float viewlimit = max(max_dist*epsilon_limit, max_dist * scale);
-	while (t < viewlimit || steps_taken++ < max_steps) {
-		vec3 pos = ro + rd*t;
-		float h = map( pos, trap );
-		float eps = max(epsilon_limit, 1.0*epsilon_factor*t);
-		if (t > dis.y || t > viewlimit || h*(0.9) < eps) break;
+		eps = max(epsilon_limit, epsilon_factor * (t + 0.5*max_v));
+		min_eps = min(eps, min_eps);
+		if (h < eps) break;
+		
+		avg_v = (prev_h + h) / 2.0;
+		max_v = max(avg_v, max_v);
+		prev_h = h;
+
+		mt = min(mt, h);
 		t += h*0.9;
-	}
-    
-	if (t < dis.y && t < viewlimit) {
-		color = trap;
-		res = t;
-	}
 
+		
+	} ;
+    
+	if (t < focal_distance) res = t;
 	return res;
 }
 
 
-vec3 glow(in vec3 col, in vec3 glowColor, in float strength)
-{
-	return mix(col, glowColor, strength); 
-}
 
-vec3 ray_march(in vec3 ro, in vec3 rd)
-{
-	vec4 tra;
-	int steps_taken;
-	float t = cast_ray(ro, rd, max_steps, tra, steps_taken);
 
-	vec3 col;
-	col = hsv2rgb(vec3(length(tra.yzw), .8, .8));
+vec3 ray_march(in vec3 ro, in vec3 rd, in float eps)
+{
+	vec4 trap;
+	int steps;
+	float iter;
+	float min_dist;
+	float min_eps;
+	float max_v;
+	float t = cast_ray(ro, rd, steps, eps, iter, trap, min_dist, min_eps, max_v );
+	
+
+	vec3 trap_col = hsv2rgb(vec3(length(trap.yzw)*2.0, .8, .8));
+	vec3 col = trap_col;
 
 	if (t < 0.0) {
 		/* Color sky */
-     	col = SKY_COLOR;
-	} else {
+		//if (glow_enabled) col = glow(SKY_COLOR, col, min_dist);
+		col = SKY_COLOR;
+
+	} 
+	else {
 		// Calculate Lighting
 		vec3 pos = ro + t*rd;
         vec3 nor = calculate_normal(pos, t);
@@ -241,13 +271,38 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 		vec3 diffuse = diff * lightColor;
 
 		col *= (ambient + diffuse);
-		//col = glow(col, vec3(1.0, 1.0, 0.0), steps_taken/max_steps);
-		
-		if (fog_enabled) col = applyFog(col, t);
+
+		//if (glow_enabled) col = glow(col, col, min_dist);
 	}
+	
+	
+
+	if (fog_enabled) col = applyFog(col, t);
+
+	// Cheap ambient AO, but we use all our steps :C
+	//col *= 1.0 - steps/max_steps;
+
+	float focal_distance = max(max_dist*epsilon_limit, max_dist * scale);
+
+	//if (heat_enabled) col = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), float(steps)/float(max_steps));
+	//if (heat_enabled) col = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), t/(scale*max_dist));
+	//if (heat_enabled) col = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), min(1.0, epsilon_limit/eps));
+	//if (heat_enabled) col = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), t/focal_distance);
+	if (heat_enabled) col = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), 1.0 - min(1.0, max_v));
+	//if (heat_enabled) col = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), float(iter)/float(max_iter));
+	//if (heat_enabled) col = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), 1.0 - trap.w/max_bailout);
+
+	//float eps = max(epsilon_limit, epsilon_factor*min_dist);
+	//col = mix(col, trap_col, max(0.2, eps/min_dist));
+
+	//col = mix(col, trap_col, max(0.2, float(steps)/float(max_steps)));
+
+	//col = mix(col, trap_col, max(0.2, 1.0 - trap.w/max_bailout));
+	col = mix(col, vec3(1.0, 1.0, 1.0), max(0.1, float(steps)/float(max_steps)));
+	//col = mix(col, trap_col, max(0.1, iter/max_iter));
+	
 
 	return col;
-
 }
 
 
@@ -262,6 +317,22 @@ void main()
     vec3 ro = camera_position;
 	vec3 rd = normalize(camera_right * px + camera_up * py + camera_direction);
 
-    vec3 shaded_color = ray_march(ro.xyz, rd.xyz);
-    o_color = vec4(shaded_color, 1.0);
+	
+    //vec3 shaded_color = ray_march(ro.xyz, rd.xyz);
+	float eps;
+	float tmp;
+	vec3 c = ray_march(ro.xyz, rd.xyz, eps);
+
+	/*
+	// anti-alias
+	float n = 2.0;
+	float epsilonf = 0.000000000001;
+    for (float theta = 0.0; M_2PI - theta > epsilonf; theta += M_2PI/n)
+	{
+		vec3 p = ro.xyz + camera_right * eps * sin(theta);
+		c = mix(c, ray_march(p, rd.xyz, tmp), 1.0/n);
+	}
+	*/
+	
+	o_color = vec4(c, 1.0);
 }

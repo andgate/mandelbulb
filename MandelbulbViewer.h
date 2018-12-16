@@ -21,6 +21,8 @@ private:
 	public:
 		bool infoToggle;
 		bool fogToggle;
+		bool glowToggle;
+		bool heatToggle;
 
 		ViewerInputListener();
 
